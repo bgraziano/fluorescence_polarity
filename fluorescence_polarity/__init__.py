@@ -13,13 +13,47 @@ def getcosine(testpoint, center_of_fluor):
     result = dotproduct / magnitude
     return result
 
-def fluor_polarity(fluor_chan, bmask, cell_tracks):
+def fluor_polarity_3d(fluor_chan, bmask, cell_tracks):
+    """
+    Calculates polarity of a fluorescence signal within an object at each time
+    point across a time series. A DataFrame containing tracking info for these
+    objects (a unique label for each tracked object and the x-y position at
+    each time point) needs to be included as this function does not incorporate
+    any tracking algorithms.
+  
+    Parameters
+    ----------
+    fluor_chan: ndarray
+        A 3d image stack (t, x, y) of the fluorescence signal to be measured.
+        
+    bmask: ndarray
+        A 3d image stack (t, x, y) containing binary masks of the objects in
+        'fluor_chan'. The shapes of 'fluor_chan' and 'bmask' must be identical.
+        
+    cell_tracks: DataFrame
+        This DataFrame summarizes the x-y positions of previously-tracked
+        objects that each have a unique label. At least four columns need to be
+        present and named as follows:        
+        'Time_s' contains the timepoints of each x-y frame in a 3d time series.
+        'Object_id' contains a unique label for each object that was tracked
+        in time.
+        'X' and 'Y' contain the x and y coordinates, respectively, of the
+        geometric center of each object at each timepoint.
+  
+    Returns
+    -------
+    output: DataFrame 
+        This DataFrame contains the original 'Time_s' and 'Object_id' columns,
+        with the further addition of an 'Angular_polarity_score' column,
+        indicating the polarity measurement of each object at each timepoint.
+        
+    """
     assert type(bmask) is np.ndarray, "Binary masks are not a numpy array!"
     assert type(fluor_chan) is np.ndarray, "Fluorescence images are not a numpy array!"
     assert fluor_chan.shape == bmask.shape, "Fluorescence image and binary mask are different dimensions!"
     assert type(cell_tracks) is pd.DataFrame, "'cell tracks' need to be formatted as a pandas DataFrame!"
     assert 'Time_s' in cell_tracks, "'cell_tracks' is missing 'Time_s' column!"
-    assert 'Cell_id' in cell_tracks, "'cell_tracks' is missing 'Cell_id' column!"
+    assert 'Object_id' in cell_tracks, "'cell_tracks' is missing 'Object_id' column!"
     assert 'X' in cell_tracks and 'Y' in cell_tracks, "'cell_tracks' is missing 'X' and/or 'Y' column(s)!"    
            
     time_intv = cell_tracks.loc[1, 'Time_s'] - cell_tracks.loc[0, 'Time_s'] # for determining time interval between each frame
@@ -154,8 +188,8 @@ def fluor_polarity(fluor_chan, bmask, cell_tracks):
     new_coords = pd.DataFrame({'X_intensity_center':xy_coords[:,2], 'Y_intensity_center':xy_coords[:,1], 'X_object_center':xy_coords[:,4],
                                'Y_object_center':xy_coords[:,3], 'Angular_polarity_score':xy_coords[:,7]})
     cell_polarity_scores = cell_tracks.join(new_coords)
-    output = pd.DataFrame(columns=['Cell_id', 'Time_s', 'Angular_polarity_score'])
-    output['Cell_id'] = cell_polarity_scores['Cell_id'].astype(int)
+    output = pd.DataFrame(columns=['Object_id', 'Time_s', 'Angular_polarity_score'])
+    output['Object_id'] = cell_polarity_scores['Object_id'].astype(int)
     output['Time_s'] = cell_polarity_scores['Time_s']
     output['Angular_polarity_score'] = cell_polarity_scores['Angular_polarity_score']
         
