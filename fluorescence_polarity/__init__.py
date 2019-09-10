@@ -13,10 +13,15 @@ def getcosine(testpoint, center_of_fluor):
     result = dotproduct / magnitude
     return result
 
-def fluor_polarity(gchan, bmask, cell_tracks):
-    assert gchan.shape == bmask.shape, "Fluorescence image and binary mask are different dimensions!"
-    # add assertion statement here for dataframe
-    
+def fluor_polarity(fluor_chan, bmask, cell_tracks):
+    assert type(bmask) is np.ndarray, "Binary masks are not a numpy array!"
+    assert type(fluor_chan) is np.ndarray, "Fluorescence images are not a numpy array!"
+    assert fluor_chan.shape == bmask.shape, "Fluorescence image and binary mask are different dimensions!"
+    assert type(cell_tracks) is pd.DataFrame, "'cell tracks' need to be formatted as a pandas DataFrame!"
+    assert 'Time_s' in cell_tracks, "'cell_tracks' is missing 'Time_s' column!"
+    assert 'Cell_id' in cell_tracks, "'cell_tracks' is missing 'Cell_id' column!"
+    assert 'X' in cell_tracks and 'Y' in cell_tracks, "'cell_tracks' is missing 'X' and/or 'Y' column(s)!"    
+           
     time_intv = cell_tracks.loc[1, 'Time_s'] - cell_tracks.loc[0, 'Time_s'] # for determining time interval between each frame
     final_table = pd.DataFrame(columns=[])    
     img_labels = np.empty(bmask.shape, dtype=int)
@@ -32,7 +37,7 @@ def fluor_polarity(gchan, bmask, cell_tracks):
         areas = [r.area for r in sk.measure.regionprops(frame)]
         labels = [r.label for r in sk.measure.regionprops(frame)]
         intlocs = [list(r.weighted_centroid) for r in sk.measure.regionprops(
-            frame, intensity_image=gchan[x,:,:])]
+            frame, intensity_image=fluor_chan[x,:,:])]
         cenlocs = [list(r.weighted_centroid) for r in sk.measure.regionprops(
             frame, intensity_image=bmask[x,:,:])]
         areascol.append(areas); labelscol.append(labels); intlocscol.append(intlocs); cenlocscol.append(cenlocs)
@@ -59,13 +64,14 @@ def fluor_polarity(gchan, bmask, cell_tracks):
     absy = np.reshape(np.asarray(absy), (len(absy), 1))
 
     objs = np.concatenate((objs, absx, absy), axis = 1)
-    flatlabel = None; flatarea = None; flatcencoords = None; flatcoords = None
+    flatlabel = None; flatarea = None; flatcencoords = None; flatcoords = None; absx = None; absy = None
 
     collection = pd.DataFrame(objs, columns=[
         'Timepoint', 'Reg_Props_Obj_Num', 'Area', 'Y_intensity', 'X_intensity',
         'Y_center', 'X_center', 'Y_adj', 'X_adj'])
     collection['Timepoint'] = (collection['Timepoint'] * time_intv).astype(int)
     collection['Reg_Props_Obj_Num'] = collection['Reg_Props_Obj_Num'].astype(int)
+    objs = None
 
     polarity_scores_final = []
     for x, frame in enumerate(img_labels):
@@ -83,7 +89,7 @@ def fluor_polarity(gchan, bmask, cell_tracks):
         # find the total intensity of each object in the current image frame
         z = 1
         while z <= np.amax(frame):
-            obj_intensity = ndimage.sum(gchan[x,:,:], img_labels[x,:,:], index=z)
+            obj_intensity = ndimage.sum(fluor_chan[x,:,:], img_labels[x,:,:], index=z)
             obj_intensitylist.append(obj_intensity)
             z += 1
 
@@ -95,7 +101,7 @@ def fluor_polarity(gchan, bmask, cell_tracks):
             adjxypoint = np.subtract(xypos, center)
             adjxyfluor = np.subtract(fluorcenter, center)
             cosine = getcosine(adjxypoint, adjxyfluor)
-            pointintensity = gchan[x,xypos[0], xypos[1]]
+            pointintensity = fluor_chan[x,xypos[0], xypos[1]]
             weightedpoint = cosine * pointintensity
             weightedpointlist.append(weightedpoint)    
 
@@ -148,8 +154,8 @@ def fluor_polarity(gchan, bmask, cell_tracks):
     new_coords = pd.DataFrame({'X_intensity_center':xy_coords[:,2], 'Y_intensity_center':xy_coords[:,1], 'X_object_center':xy_coords[:,4],
                                'Y_object_center':xy_coords[:,3], 'Angular_polarity_score':xy_coords[:,7]})
     cell_polarity_scores = cell_tracks.join(new_coords)
-    output = pd.DataFrame(columns=['Cell', 'Time_s', 'Angular_polarity_score'])
-    output['Cell'] = cell_polarity_scores['Cell']
+    output = pd.DataFrame(columns=['Cell_id', 'Time_s', 'Angular_polarity_score'])
+    output['Cell_id'] = cell_polarity_scores['Cell_id'].astype(int)
     output['Time_s'] = cell_polarity_scores['Time_s']
     output['Angular_polarity_score'] = cell_polarity_scores['Angular_polarity_score']
         

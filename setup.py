@@ -8,4 +8,5 @@ setup(name='fluorescence_polarity',
       author_email='brgrazian@gmail.com',
       license='MIT',
       packages=['fluorescence_polarity'],
+      install_requires=['numpy', 'mpu', 'scikit-image', 'pandas', 'scipy'],
       zip_safe=False)
