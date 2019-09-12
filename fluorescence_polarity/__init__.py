@@ -78,13 +78,13 @@ def fluor_polarity_3d(fluor_chan, bmask, cell_tracks):
     # label objects in binary mask and get x-y positions for the geometric center
     # and weighted fluorescence intensity center for each labeled object
     for x, frame in enumerate(img_labels):
-        areas = [r.area for r in sk.measure.regionprops(frame)]
-        labels = [r.label for r in sk.measure.regionprops(frame)]
-        major_axes = [r.major_axis_length for r in sk.measure.regionprops(frame)]
+        areas = [r.area for r in sk.measure.regionprops(frame, coordinates='rc')]
+        labels = [r.label for r in sk.measure.regionprops(frame, coordinates='rc')]
+        major_axes = [r.major_axis_length for r in sk.measure.regionprops(frame, coordinates='rc')]
         intlocs = [list(r.weighted_centroid) for r in sk.measure.regionprops(
-            frame, intensity_image=fluor_chan[x,:,:])]
+            frame, intensity_image=fluor_chan[x,:,:], coordinates='rc')]
         cenlocs = [list(r.weighted_centroid) for r in sk.measure.regionprops(
-            frame, intensity_image=bmask[x,:,:])]
+            frame, intensity_image=bmask[x,:,:], coordinates='rc')]
         areascol.append(areas); labelscol.append(labels); intlocscol.append(intlocs); cenlocscol.append(cenlocs); major_axes_col.append(major_axes)
         y = 0
         while y < np.amax(frame):
