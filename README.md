@@ -1,2 +1,2 @@
 # fluorescence_polarity
- Methods for quantify polarity of fluorescence markers
+ Methods for quantifying polarity of fluorescence markers
