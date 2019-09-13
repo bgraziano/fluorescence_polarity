@@ -13,13 +13,14 @@ def getcosine(testpoint, center_of_fluor):
     result = dotproduct / magnitude
     return result
 
-def fluor_polarity_3d(fluor_chan, bmask, cell_tracks):
+def fluor_polarity_txy(fluor_chan, bmask, cell_tracks):
     """
     Calculates polarity of a fluorescence signal within an object at each time
     point across a time series. A DataFrame containing tracking info for these
     objects (a unique label for each tracked object and the x-y position at
     each time point) needs to be included as this function does not incorporate
-    any tracking algorithms.
+    any tracking algorithms. See https://doi.org/10.1101/457119 for detailed
+    descriptions of the 'Distance' and 'Angular' polarity metrics.
   
     Parameters
     ----------
@@ -27,8 +28,9 @@ def fluor_polarity_3d(fluor_chan, bmask, cell_tracks):
         A 3d image stack (t, x, y) of the fluorescence signal to be measured.
         
     bmask: ndarray
-        A 3d image stack (t, x, y) containing binary masks of the objects in
-        'fluor_chan'. The shapes of 'fluor_chan' and 'bmask' must be identical.
+        A 3d image stack (t, x, y) of binary masks of the objects containing
+        the signal in 'fluor_chan' (e.g. cell 'footprints'). The shapes of
+        'fluor_chan' and 'bmask' must be identical.
         
     cell_tracks: DataFrame
         This DataFrame summarizes the x-y positions of previously-tracked
@@ -207,5 +209,155 @@ def fluor_polarity_3d(fluor_chan, bmask, cell_tracks):
     output['Time_s'] = cell_polarity_scores['Time_s']
     output['Distance_polarity_score'] = cell_polarity_scores['Distance_polarity_score']
     output['Angular_polarity_score'] = cell_polarity_scores['Angular_polarity_score']
+        
+    return output
+
+def fluor_polarity_xy(fluor_chan, bmask):
+    """
+    Calculates polarity of a fluorescence signal within objects in a single
+    image. See https://doi.org/10.1101/457119 for detailed descriptions of
+    the 'Distance' and 'Angular' polarity metrics.
+  
+    Parameters
+    ----------
+    fluor_chan: ndarray
+        A 2d image (x, y) of the fluorescence signal to be measured.
+        
+    bmask: ndarray
+        A 3d image (x, y) of binary masks of the objects containing the
+        signal in 'fluor_chan' (e.g. cell 'footprints'). The shapes of
+        'fluor_chan' and 'bmask' must be identical.
+  
+    Returns
+    -------
+    output: DataFrame
+        This DataFrame contains five columns:
+        'Object_id': Label for each object in the binary mask.
+        'X_center': The x-coordinate of the geometric center of the object
+            in the binary mask.
+        'Y_center': The y-coordinate of the geometric center of the object
+            in the binary mask.
+        'Distance_polarity_score': Polarity score based on the distance
+            between the center of fluorescence intensity and the
+            geometric center of the object.
+        'Angular_polarity_score': Polarity score based on the angular
+            distribution of the fluorescence signal about the geometric
+            center of the object.
+        
+    """
+    assert type(bmask) is np.ndarray, "Binary masks are not a numpy array!"
+    assert type(fluor_chan) is np.ndarray, "Fluorescence images are not a numpy array!"
+    assert fluor_chan.shape == bmask.shape, "Fluorescence image and binary mask are different dimensions!"
+    
+    final_table = pd.DataFrame(columns=[])    
+    img_labels = np.zeros(bmask.shape, dtype=int)
+
+    img_labels = sk.measure.label(bmask)       
+
+    areascol = []; labelscol = []; objs = []; intlocscol = []; cenlocscol = []; xlist = []; major_axes_col = []
+
+    # label objects in binary mask and get x-y positions for the geometric center
+    # and weighted fluorescence intensity center for each labeled object
+
+    areas = [r.area for r in sk.measure.regionprops(img_labels, coordinates='rc')]
+    labels = [r.label for r in sk.measure.regionprops(img_labels, coordinates='rc')]
+    major_axes = [r.major_axis_length for r in sk.measure.regionprops(img_labels, coordinates='rc')]
+    intlocs = [list(r.weighted_centroid) for r in sk.measure.regionprops(
+        img_labels, intensity_image=fluor_chan[:,:], coordinates='rc')]
+    cenlocs = [list(r.weighted_centroid) for r in sk.measure.regionprops(
+        img_labels, intensity_image=bmask[:,:], coordinates='rc')]
+    areascol.append(areas); labelscol.append(labels); intlocscol.append(intlocs); cenlocscol.append(cenlocs); major_axes_col.append(major_axes)
+
+    # make a numpy array from all the lists generated in preceding 'for' loop
+    flatarea = mpu.datastructures.flatten(areascol)
+    flatlabel = mpu.datastructures.flatten(labelscol)
+    flatmajor_axes = mpu.datastructures.flatten(major_axes_col)
+    flatcoords = mpu.datastructures.flatten(intlocscol)
+    flatcoords = np.reshape(np.asarray(flatcoords), (len(flatcoords)//2, 2))
+    flatcencoords = mpu.datastructures.flatten(cenlocscol)
+    flatcencoords = np.reshape(np.asarray(flatcencoords), (len(flatcencoords)//2, 2))
+    objs.append(flatlabel); objs.append(flatarea); objs.append(flatmajor_axes)
+    objs = np.transpose(np.asarray(objs))
+    objs = np.concatenate((objs,flatcoords, flatcencoords),axis = 1)
+    areascol = None; labelscol = None; intlocscol = None; cenlocscol = None
+
+    # normalize distances between geometric and fluorescence center to origin to make later calcuations easier
+    absx = objs[:,3] - objs[:,5]
+    absy = objs[:,4] - objs[:,6]
+    absx = np.reshape(np.asarray(absx), (len(absx), 1))
+    absy = np.reshape(np.asarray(absy), (len(absy), 1))
+
+    objs = np.concatenate((objs, absx, absy), axis = 1)
+    flatlabel = None; flatarea = None; flatcencoords = None; flatcoords = None; absx = None; absy = None
+
+    collection = pd.DataFrame(objs, columns=[
+        'Reg_Props_Obj_Num', 'Area', 'Major_axis_length', 'Y_intensity', 'X_intensity',
+        'Y_center', 'X_center', 'Y_adj', 'X_adj'])
+    collection['Reg_Props_Obj_Num'] = collection['Reg_Props_Obj_Num'].astype(int)
+    collection['Distance_polarity_score'] = ((collection['X_adj'] ** 2 + collection['Y_adj'] ** 2) ** 0.5) / (collection['Major_axis_length'] / 2)
+    objs = None
+
+    polarity_scores_final = []
+    assert len(collection.columns) == 10
+    pointslist = []; weightedpointlist = []; obj_intensitylist = []
+
+    # find all x-y positions where there is an object present
+    for index, item in np.ndenumerate(img_labels):
+        if item > 0:
+            nextpoint = [item, index]
+            pointslist.append(nextpoint)
+
+    pointslist.sort()
+    subcollection = collection.values
+
+    # find the total intensity of each object in the current image frame
+    z = 1
+    while z <= np.amax(img_labels):
+        obj_intensity = ndimage.sum(fluor_chan[:,:], img_labels[:,:], index=z)
+        obj_intensitylist.append(obj_intensity)
+        z += 1
+
+    # for each point in object, find the consine between its vector and the "polarity" vector
+    y = 0
+    for y, item in enumerate(pointslist):
+        objnum = item[0]; xypos = item[1]
+        center = (subcollection[(objnum - 1),5], subcollection[(objnum - 1),6])
+        fluorcenter = (subcollection[(objnum - 1),3], subcollection[(objnum - 1),4])
+        adjxypoint = np.subtract(xypos, center)
+        adjxyfluor = np.subtract(fluorcenter, center)
+        cosine = getcosine(adjxypoint, adjxyfluor)
+        pointintensity = fluor_chan[xypos[0], xypos[1]]
+        weightedpoint = cosine * pointintensity
+        weightedpointlist.append(weightedpoint)    
+
+    weightedpointlist = np.asanyarray(weightedpointlist).astype(int)
+    sumweightedpoints = 0
+    finalweights = []
+
+    # this sums together the values for all the individual points of a given object
+    for y, item in enumerate(weightedpointlist):
+        if y + 1 == len(weightedpointlist):
+            sumweightedpoints = sumweightedpoints + weightedpointlist[y]
+            finalweights.append(sumweightedpoints)
+            sumweightedpoints = 0
+        elif pointslist[y][0] - pointslist[y + 1][0] == 0:
+            sumweightedpoints = sumweightedpoints + weightedpointlist[y]
+        elif pointslist[y][0] - pointslist[y + 1][0] == -1:
+            sumweightedpoints = sumweightedpoints + weightedpointlist[y]
+            finalweights.append(sumweightedpoints)
+            sumweightedpoints = 0
+
+    polarity_scores = np.asanyarray(finalweights) / np.asarray(obj_intensitylist)
+    polarity_scores_final.append(list(polarity_scores))
+
+    polarity_scores_final = mpu.datastructures.flatten(polarity_scores_final)
+    polarity_scores_final = np.transpose(np.asarray(polarity_scores_final))
+    collection['Angular_polarity_score'] = polarity_scores_final
+
+    output = pd.DataFrame(columns=[])
+    output['Object_id'] = collection['Reg_Props_Obj_Num'].astype(int)
+    output['X_center'] = collection['X_center']; output['Y_center'] = collection['Y_center']
+    output['Distance_polarity_score'] = collection['Distance_polarity_score']
+    output['Angular_polarity_score'] = collection['Angular_polarity_score']
         
     return output
