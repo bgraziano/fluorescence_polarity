@@ -62,7 +62,7 @@ def fluor_polarity_txy(fluor_chan, bmask, cell_tracks):
     assert 'X' in cell_tracks and 'Y' in cell_tracks, "'cell_tracks' is missing 'X' and/or 'Y' column(s)!"
     assert len(cell_tracks.columns) == 4, "'cell_tracks' must contain EXACTLY five columns labeled 'Time_s', 'Object_id, 'X', and 'Y'!"
     
-    #reformat input DataFrame so order of columns is correct for numpy arrays that are created later
+    #reformat input DataFrame so order of columns is consistent
     sortdata = pd.DataFrame(columns=[])
     sortdata['Time_s'] = cell_tracks['Time_s']; sortdata['Object_id'] = cell_tracks['Object_id']
     sortdata['X'] = cell_tracks['X']; sortdata['Y'] = cell_tracks['Y']
@@ -181,8 +181,8 @@ def fluor_polarity_txy(fluor_chan, bmask, cell_tracks):
     collection['Angular_polarity_score'] = polarity_scores_final
 
     # Below for loop matches values from the 'polarity scores array' to those in the DataFrame
-    # containing the CellProfiler tracks. This is needed since polarity scores are calculated for
-    # every object, even ones that are not present in all timepoints, merge, or split.
+    # containing the labeled tracks. This is needed since polarity scores are calculated for
+    # every object, even ones that have no associated track label.
     xy_coords = np.zeros((len(collection), len(collection.columns)), dtype=float)
     for indx, row in cell_tracks.iterrows():
         time_idx = row['Time_s']
@@ -200,7 +200,6 @@ def fluor_polarity_txy(fluor_chan, bmask, cell_tracks):
         extract = extract.values
         xy_coords[indx,:] = extract
 
-    # check these columns labels VERY CAREFULLY with the 'xy_coords' numpy array!
     new_coords = pd.DataFrame({'X_intensity_center':xy_coords[:,5], 'Y_intensity_center':xy_coords[:,4], 'X_object_center':xy_coords[:,7],
                                'Y_object_center':xy_coords[:,6], 'Distance_polarity_score':xy_coords[:,10], 'Angular_polarity_score':xy_coords[:,11]})
     cell_polarity_scores = cell_tracks.join(new_coords)
