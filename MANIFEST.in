@@ -1,1 +1,2 @@
-include  data_for_testing/*.zip
+include data_for_testing/*.csv
+include data_for_testing/test_images/*.tif
