@@ -1,2 +1,3 @@
-include data_for_testing/*.csv
-include data_for_testing/test_images/*.tif
+include fluorescence_polarity/data_for_testing/*.csv
+include fluorescence_polarity/data_for_testing/*.ipynb
+include fluorescence_polarity/data_for_testing/test_images/*.tif

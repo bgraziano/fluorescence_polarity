@@ -1,5 +1,7 @@
 from setuptools import setup
 
+files = ['fluorescence_polarity/*']
+
 setup(name='fluorescence_polarity',
       version='0.1',
       description='Methods for quantifying polarity of fluorescence markers',
