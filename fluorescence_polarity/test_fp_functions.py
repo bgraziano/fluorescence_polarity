@@ -7,12 +7,6 @@ pd.options.mode.chained_assignment = None # suppress waring messages for in-plac
 
 ipath = Path('data_for_testing/test_images/')
 dpath = Path('data_for_testing/')
-
-print(ipath)
-print(dpath)
-
-print(file1.stem)
-
 cell_tr = pd.read_csv((dpath / 'test_DataFrame.csv'), index_col=0)
 txy_test = pd.read_csv((dpath / 'fluor_polarity_txy_test.csv'), index_col=0)
 xy_test = pd.read_csv((dpath / 'fluor_polarity_xy_test.csv'), index_col=0)
