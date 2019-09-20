@@ -11,7 +11,7 @@ setup_parameters = dict(
       author_email='brgrazian@gmail.com',
       license='MIT',
       packages=['fluorescence_polarity'],
-      install_requires=['numpy>=1.16.4', 'mpu>=0.20.0', 'scikit-image>=0.15.0', 'pandas>=0.25.0', 'scipy>=1.3.0'],
+      install_requires=['numpy>=1.16.4', 'mpu', 'scikit-image>=0.15.0', 'pandas>=0.25.0', 'scipy>=1.3.0'],
       include_package_data=True,
       zip_safe=False,
       python_requires='>=3.7',
