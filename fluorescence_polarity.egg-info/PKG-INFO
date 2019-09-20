@@ -1,0 +1,11 @@
+Metadata-Version: 1.2
+Name: fluorescence-polarity
+Version: 0.1
+Summary: Methods for quantifying spatial polarization of fluorescence markers
+Home-page: https://github.com/bgraziano/fluorescence_polarity
+Author: Brian Graziano
+Author-email: brgrazian@gmail.com
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN
+Requires-Python: >=3.6
