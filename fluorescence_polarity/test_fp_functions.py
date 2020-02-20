@@ -1,12 +1,13 @@
-import fluorescence_polarity as fp
-import numpy as np
-import skimage as sk
-import pandas as pd
+import fluorescence_polarity as fp, numpy as np, skimage as sk, pandas as pd
 from pathlib import Path
+from skimage import io, measure
 pd.options.mode.chained_assignment = None # suppress waring messages for in-place dataframe edits
 
-ipath = Path('data_for_testing/test_images/')
-dpath = Path('data_for_testing/')
+ipath = Path(fp.__file__[:-11], 'data_for_testing/test_images/')
+dpath = Path(fp.__file__[:-11], 'data_for_testing/')
+print(ipath)
+print(dpath)
+
 cell_tr = pd.read_csv((dpath / 'test_DataFrame.csv'), index_col=0)
 txy_test = pd.read_csv((dpath / 'fluor_polarity_txy_test.csv'), index_col=0)
 xy_test = pd.read_csv((dpath / 'fluor_polarity_xy_test.csv'), index_col=0)
