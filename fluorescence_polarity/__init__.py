@@ -223,7 +223,7 @@ def fluor_polarity_xy(fluor_chan, bmask):
         A 2d image (x, y) of the fluorescence signal to be measured.
         
     bmask: ndarray
-        A 3d image (x, y) of binary masks of the objects containing the
+        A 2d image (x, y) of binary masks of the objects containing the
         signal in 'fluor_chan' (e.g. cell 'footprints'). The shapes of
         'fluor_chan' and 'bmask' must be identical.
   
